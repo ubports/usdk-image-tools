@@ -265,7 +265,7 @@ def test_container_destroy(container_name):
 #
 # Build the the test projects in the container
 #
-def test_build_projects_in_container(container):
+def test_build_projects_in_container(container, target_arch):
     for test_project in test_projects:
         if os.path.exists("/tmp/build-%s" % test_project):
             shutil.rmtree("/tmp/build-%s" % test_project)
@@ -274,7 +274,10 @@ def test_build_projects_in_container(container):
         if os.path.isfile("/tmp/%s/CMakeLists.txt" % test_project):
             project_type = "cmake"
         else:
-            project_type = "qt5-qmake-arm-linux-gnueabihf"
+            if re.match("arm", target_arch):
+                project_type = "qt5-qmake-arm-linux-gnueabihf"
+            else:
+                project_type = "qmake"
         cmake_test_project = subprocess.Popen(["/usr/bin/usdk-target",
                                                "exec",
                                                "%s" % container,
@@ -382,7 +385,7 @@ for product in index_data["index"
                  "is %s address" % (test_container_name,
                                     test_container_status_logs))
 
-    test_build_projects_in_container(test_container_name)
+    test_build_projects_in_container(test_container_name, target_arch)
 
     test_container_destroy_result, test_container_destroy_logs\
         = test_container_destroy(test_container_name)
