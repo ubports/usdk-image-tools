@@ -326,7 +326,7 @@ if test_image_server_result is False:
              "Could not get the list of available images from the server")
     sys.exit(1)
 else:
-    log_test(True, "The Image sever is available")
+    log_test(True, "The Image server is available")
 
 test_initialized_result, test_initialized_logs\
     = test_initialized()
