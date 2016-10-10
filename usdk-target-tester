@@ -1,0 +1,378 @@
+#!/usr/bin/env python3
+# Copyright (C) 2016 Canonical Ltd.
+# Authors: Zoltán Balogh <zoltan.balogh@canonical.com>
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; version 3 of the License.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+# TODO: status returns ip, check that
+# initialized needed once
+
+from __future__ import print_function
+
+try:
+    from urllib.error import URLError
+    from urllib.request import urlopen
+except ImportError:
+    from urllib2 import URLError, urlopen
+import os
+import pwd
+import re
+import shutil
+import stat
+import subprocess
+import socket
+import sys
+import argparse
+import time
+import hashlib
+from textwrap import dedent
+from xml.etree import ElementTree
+import json
+import os.path
+from time import gmtime, strftime
+from enum import Enum
+
+
+class bcolors:
+    HEADER = '\033[95m'
+    OKBLUE = '\033[94m'
+    OKGREEN = '\033[92m'
+    WARNING = '\033[93m'
+    FAIL = '\033[91m'
+    ENDC = '\033[0m'
+
+    def disable(self):
+        self.HEADER = ''
+        self.OKBLUE = ''
+        self.OKGREEN = ''
+        self.WARNING = ''
+        self.FAIL = ''
+        self.ENDC = ''
+
+
+class Pattern(Enum):
+    alias = 1
+    index = 2
+
+test_container_name = "test-image"
+
+test_projects = [
+                 "camera-app",
+                 "ubuntu-calculator-app",
+                 # "address-book-app", / needs libqofono-dev
+                 "dialer-app",
+                 "mediaplayer-app",
+                 # "reminders-app"
+                ]
+
+
+def extract_container_info(s, pattern):
+    image_alias_pattern = re.compile(r"""ubuntu-sdk-
+                             (?P<series>.*?)
+                             \-(?P<target>.*?)
+                             \-(?P<base>.*?)
+                             -dev""", re.VERBOSE)
+    index_pattern = re.compile(r"""com\.ubuntu\.sdkimage\:builder\:
+                             (?P<target>.*?)
+                             \:(?P<series>.*?)
+                             \:(?P<base>.*?)
+                             $""", re.VERBOSE)
+    if pattern == Pattern.alias:
+        match = image_alias_pattern.match(s)
+    if pattern == Pattern.index:
+        match = index_pattern.match(s)
+    series_name = match.group("series")
+    target_arch = match.group("target")
+    base_arch = match.group("base")
+    return (series_name, target_arch, base_arch)
+
+
+#
+# Log the rest results with OK or FAIL
+#
+def log_test(passed, log_text):
+    if passed:
+        print(bcolors.OKGREEN + "\t[  OK  ] " + bcolors.ENDC +
+              "%s" % log_text)
+    else:
+        print(bcolors.FAIL + "\t[ FAIL ] " + bcolors.ENDC +
+              "%s" % log_text)
+
+
+#
+# Check out few projects to testbuild them in the containers
+#
+def check_out_test_projects():
+    my_env = os.environ.copy()
+    my_env["HOME"] = "/"
+    for test_project in test_projects:
+        if os.path.exists("/tmp/%s" % test_project):
+            shutil.rmtree("/tmp/%s" % test_project)
+        bzr_branch_test_project = subprocess.Popen(["/usr/bin/bzr",
+                                                    "branch",
+                                                    "lp:%s" % test_project,
+                                                    "/tmp/%s" % test_project],
+                                                   stdout=subprocess.PIPE,
+                                                   stderr=subprocess.PIPE,
+                                                   env=my_env)
+        stdout_value, stderr_value = bzr_branch_test_project.communicate()
+        stripped_stderr_value = \
+            stderr_value.decode("utf-8").replace("You have not informed bzr of"
+                                                 " your Launchpad ID, and you "
+                                                 "must do this to\nwrite to "
+                                                 "Launchpad or access private "
+                                                 "data.  See \"bzr help "
+                                                 "launchpad-login\".\n", "")
+        if (stderr_value and not
+                re.match("Branched", stripped_stderr_value)):
+            log_test(False, stripped_stderr_value)
+            return False
+        else:
+            log_test(True, "%s lp:%s" % (stripped_stderr_value.strip(),
+                                         test_project))
+    return True
+
+
+#
+# Test if the image server is available
+#
+def test_image_server():
+    usdk_target_process = subprocess.Popen(["/usr/bin/usdk-target", "images"],
+                                           stdout=subprocess.PIPE,
+                                           stderr=subprocess.PIPE)
+    stdout_value, stderr_value = usdk_target_process.communicate()
+    if stderr_value:
+        return False, 0
+    else:
+        available_images_data = json.loads(stdout_value.decode("utf-8"))
+        return True, available_images_data
+
+
+#
+# Test if the image can be downloaded and set up for the SDK
+#
+def test_download_image(image_fingerprint, product):
+    usdk_target_process = subprocess.Popen(["/usr/bin/usdk-target",
+                                            "create",
+                                            "-n", "%s" % test_container_name,
+                                            "-p", "%s" % image_fingerprint],
+                                           stdout=subprocess.PIPE,
+                                           stderr=subprocess.PIPE)
+    stdout_value, stderr_value = usdk_target_process.communicate()
+    if (stderr_value and
+            stderr_value.decode("utf-8") != "1000\nCreating groups\n"):
+        return False, stderr_value.decode("utf-8")
+    else:
+        return True, stdout_value.decode("utf-8")
+
+
+#
+# Test if the container exists
+#
+def test_container_exists(container_name):
+    usdk_target_process = subprocess.Popen(["/usr/bin/usdk-target",
+                                            "exists",
+                                            "%s" % container_name],
+                                           stdout=subprocess.PIPE,
+                                           stderr=subprocess.PIPE)
+    stdout_value, stderr_value = usdk_target_process.communicate()
+    if stderr_value and stderr_value.decode("utf-8") != "Container exists\n":
+        return False, stderr_value.decode("utf-8")
+    else:
+        return True, stdout_value.decode("utf-8")
+
+
+#
+# Test if the LXD backend is initialized correctly
+#
+def test_initialized():
+    usdk_target_process = subprocess.Popen(["/usr/bin/usdk-target",
+                                            "initialized"],
+                                           stdout=subprocess.PIPE,
+                                           stderr=subprocess.PIPE)
+    stdout_value, stderr_value = usdk_target_process.communicate()
+    if (stderr_value and
+            stderr_value.decode("utf-8") != "LXD bridge is configured with a"
+                                            "subnet.\nChecking if containers"
+                                            " are accessible\nAll containers"
+                                            " are accessible.\nChecking for "
+                                            "broken devices...\nContainer "
+                                            "backend is ready.\n"):
+        return False, stderr_value.decode("utf-8")
+    else:
+        return True, stdout_value.decode("utf-8")
+
+
+#
+# Test if the container status is correct
+#
+def test_container_status(container_name):
+    # if the container was just created then it needs some time to
+    # set up the network
+    time.sleep(5)
+    usdk_target_process = subprocess.Popen(["/usr/bin/usdk-target",
+                                            "status",
+                                            "%s" % container_name],
+                                           stdout=subprocess.PIPE,
+                                           stderr=subprocess.PIPE)
+    stdout_value, stderr_value = usdk_target_process.communicate()
+    if stderr_value:
+        return False, stderr_value.decode("utf-8")
+    else:
+        status_data = json.loads(stdout_value.decode("utf-8"))
+        if status_data["status"] != "Running":
+            return False, "Not running"
+        else:
+            if 'ipv4' in status_data:
+                try:
+                    socket.inet_aton(status_data["ipv4"])
+                    return True, "%s on %s" % (status_data["status"].lower(),
+                                               status_data["ipv4"])
+                except socket.error:
+                    return False, "Container has no IP address"
+            else:
+                return False, "Network is not set up correctly"
+
+
+#
+# Test if the container can be destroyed
+#
+def test_container_destroy(container_name):
+    usdk_target_process = subprocess.Popen(["/usr/bin/usdk-target",
+                                            "destroy",
+                                            "%s" % container_name],
+                                           stdout=subprocess.PIPE,
+                                           stderr=subprocess.PIPE)
+    stdout_value, stderr_value = usdk_target_process.communicate()
+    if stderr_value:
+        return False, stderr_value.decode("utf-8")
+    else:
+        return True, stdout_value.decode("utf-8")
+
+
+#
+# Build the the test projects in the container
+#
+def test_build_projects_in_container(container):
+    for test_project in test_projects:
+        if os.path.exists("/tmp/build-%s" % test_project):
+            shutil.rmtree("/tmp/build-%s" % test_project)
+        os.makedirs("/tmp/build-%s" % test_project)
+        my_env = os.environ.copy()
+        if os.path.isfile("/tmp/%s/CMakeLists.txt" % test_project):
+            project_type = "cmake"
+        else:
+            project_type = "qmake"
+        cmake_test_project = subprocess.Popen(["/usr/bin/usdk-target",
+                                               "exec",
+                                               "%s" % container,
+                                               "--",
+                                               "/bin/bash",
+                                               "-c",
+                                               "cd /tmp/build-%s && %s"
+                                               " /tmp/%s && make" %
+                                               (test_project,
+                                                project_type,
+                                                test_project)],
+                                              env=my_env,
+                                              stdout=subprocess.PIPE,
+                                              stderr=subprocess.PIPE,
+                                              cwd="/tmp/build-%s"
+                                              % test_project)
+        stdout_value, stderr_value = cmake_test_project.communicate()
+        returncode = cmake_test_project.returncode
+        if cmake_test_project.returncode:
+            log_test(False, stderr_value.decode("utf-8"))
+        else:
+            log_test(True, "The %s is successfully built." % test_project)
+
+print("Prepare -- checking out test projects")
+check_out_test_projects()
+
+index_json = "index.json"
+print("Testing -- Image server")
+
+with open(index_json) as index_json_file:
+    index_data = json.load(index_json_file)
+test_image_server_result, available_images_data = test_image_server()
+if test_image_server_result is False:
+    log_test(False,
+             "Could not get the list of available images from the server")
+    sys.exit(1)
+else:
+    log_test(True, "The Image sever is available")
+
+test_initialized_result, test_initialized_logs\
+    = test_initialized()
+if test_initialized_result is False:
+    log_test(False,
+             "The container backend is not correctly set up ->"
+             " %s" % test_initialized_logs)
+else:
+    log_test(True, "The container backend is set up correctly")
+
+for product in index_data["index"
+                          ]["com.ubuntu.sdk-image:released:download"
+                            ]["products"]:
+    series_name, target_arch, base_arch = extract_container_info(product,
+                                                                 Pattern.index)
+    print("Testing -- " + product)
+    image_alias = 'ubuntu-sdk-%s-%s-%s-dev' % (series_name,
+                                               target_arch,
+                                               base_arch)
+    image_fingerprint = ''
+    for image in available_images_data:
+        if image["alias"] == image_alias:
+            image_fingerprint = image["fingerprint"]
+            log_test(True, "Fingerprint found for %s" % image_alias)
+    if not image_fingerprint:
+        log_test(False, "The image for %s is not available" % product)
+        continue
+    else:
+        test_download_image_result, stdout_or_error\
+            = test_download_image(image_fingerprint, product)
+        if test_download_image_result is False:
+            log_test(False, "Could not create container for %s " % product)
+            continue
+        else:
+            log_test(True, "The container is created for %s" % image_alias)
+    test_container_exists_result, test_container_exists_logs\
+        = test_container_exists(test_container_name)
+    if test_container_exists_result is False:
+        log_test(False,
+                 "The %s container does not exist" % test_container_name)
+    else:
+        log_test(True, "The %s exists" % test_container_name)
+
+    test_container_status_result, test_container_status_logs =\
+        test_container_status(test_container_name)
+    if test_container_status_result is False:
+        log_test(False,
+                 "The %s container backend is not correctly set up ->"
+                 " %s" % (test_container_name, test_container_status_logs))
+    else:
+        log_test(True,
+                 "The %s container "
+                 "is %s address" % (test_container_name,
+                                    test_container_status_logs))
+
+    test_build_projects_in_container(test_container_name)
+
+    test_container_destroy_result, test_container_destroy_logs\
+        = test_container_destroy(test_container_name)
+    if test_container_destroy_result is False:
+        log_test(False,
+                 "The %s container could not be destroyed"
+                 % test_container_name)
+    else:
+        log_test(True, "The %s is destroyed" % test_container_name)
