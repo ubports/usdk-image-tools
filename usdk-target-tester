@@ -301,6 +301,13 @@ def test_build_projects_in_container(container, target_arch):
         else:
             log_test(True, "The %s is successfully built." % test_project)
 
+parser = argparse.ArgumentParser(description="Ubuntu SDK target tester")
+parser.add_argument('-b',
+                    '--branch_projects',
+                    action="store_true",
+                    help='Branch the test projects to /tmp')
+options = parser.parse_args()
+
 if os.geteuid() != 0:
     log_test(False, "You need to have root privileges to run this tool.\n\t\t"
                     " Please try again, using 'sudo'")
@@ -317,8 +324,9 @@ else:
             log_test(False, "The %s is invalid" % index_json)
             sys.exit(1)
 
-print("Prepare -- checking out test projects")
-check_out_test_projects()
+if options.branch_projects:
+    print("Prepare -- checking out test projects")
+    check_out_test_projects()
 
 print("Testing -- Image server")
 
