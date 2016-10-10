@@ -1,0 +1,18 @@
+#!/bin/bash
+
+./usdk-target-build -a amd64 -b amd64 -f ubuntu-sdk-15.04 && \
+./usdk-target-build -a armhf -b amd64 -f ubuntu-sdk-15.04 && \
+./usdk-target-build -a i386 -b i386 -f ubuntu-sdk-15.04 && \
+./usdk-target-build -a armhf -b i386 -f ubuntu-sdk-15.04 && \
+./usdk-target-build -a armhf -b armhf -f ubuntu-sdk-15.04 && \
+./usdk-target-build -a amd64 -b amd64 -f ubuntu-sdk-16.04 && \
+./usdk-target-build -a armhf -b amd64 -f ubuntu-sdk-16.04 && \
+./usdk-target-build -a i386 -b i386 -f ubuntu-sdk-16.04 && \
+./usdk-target-build -a armhf -b i386 -f ubuntu-sdk-16.04 && \
+./usdk-target-build -a armhf -b armhf -f ubuntu-sdk-16.04 
+
+#./usdk-target-build -a arm64 -b amd64 -f ubuntu-sdk-16.04 && \
+#./usdk-target-build -a arm64 -b i386 -f ubuntu-sdk-16.04 
+#./usdk-target-build -a arm64 -b amd64 -f ubuntu-sdk-15.04 && \
+#./usdk-target-build -a arm64 -b i386 -f ubuntu-sdk-15.04 && \
+
