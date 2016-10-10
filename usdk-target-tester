@@ -156,7 +156,10 @@ def test_image_server():
     if stderr_value:
         return False, 0
     else:
-        available_images_data = json.loads(stdout_value.decode("utf-8"))
+        try:
+            available_images_data = json.loads(stdout_value.decode("utf-8"))
+        except:
+            return False, "Invalid image data"
         return True, available_images_data
 
 
