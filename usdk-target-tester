@@ -274,7 +274,7 @@ def test_build_projects_in_container(container):
         if os.path.isfile("/tmp/%s/CMakeLists.txt" % test_project):
             project_type = "cmake"
         else:
-            project_type = "qmake"
+            project_type = "qt5-qmake-arm-linux-gnueabihf"
         cmake_test_project = subprocess.Popen(["/usr/bin/usdk-target",
                                                "exec",
                                                "%s" % container,
