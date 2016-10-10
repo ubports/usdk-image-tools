@@ -64,6 +64,8 @@ class Pattern(Enum):
     alias = 1
     index = 2
 
+index_json = "index.json"
+
 test_container_name = "test-image"
 
 test_projects = [
@@ -296,14 +298,27 @@ def test_build_projects_in_container(container):
         else:
             log_test(True, "The %s is successfully built." % test_project)
 
+if os.geteuid() != 0:
+    log_test(False, "You need to have root privileges to run this tool.\n\t\t Please try again, using 'sudo'")
+    sys.exit(1) 
+
+if not os.path.isfile("%s" % index_json):
+   log_test(False, "There is no %s file to validate" % index_json)
+   sys.exit(1)
+else:
+   with open(index_json) as index_json_file:
+       try:
+           index_data = json.load(index_json_file)
+       except:
+           log_test(False, "The %s is invalid" % index_json)
+sys.exit(1)
+
 print("Prepare -- checking out test projects")
 check_out_test_projects()
 
-index_json = "index.json"
 print("Testing -- Image server")
 
-with open(index_json) as index_json_file:
-    index_data = json.load(index_json_file)
+
 test_image_server_result, available_images_data = test_image_server()
 if test_image_server_result is False:
     log_test(False,
