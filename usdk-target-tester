@@ -378,6 +378,7 @@ for product in index_data["index"
     if test_container_exists_result is False:
         log_test(False,
                  "The %s container does not exist" % test_container_name)
+        continue
     else:
         log_test(True, "The %s exists" % test_container_name)
 
@@ -387,6 +388,7 @@ for product in index_data["index"
         log_test(False,
                  "The %s container backend is not correctly set up ->"
                  " %s" % (test_container_name, test_container_status_logs))
+        continue
     else:
         log_test(True,
                  "The %s container "
