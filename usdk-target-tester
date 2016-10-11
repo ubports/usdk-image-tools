@@ -221,7 +221,7 @@ def test_initialized():
 def test_container_status(container_name):
     # if the container was just created then it needs some time to
     # set up the network
-    time.sleep(5)
+    time.sleep(30)
     usdk_target_process = subprocess.Popen(["/usr/bin/usdk-target",
                                             "status",
                                             "%s" % container_name],
