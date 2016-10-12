@@ -1,17 +1,18 @@
 #!/bin/bash
 
-USER_ON_SERVER=bzoltan
-SERVER=people.canonical.com
+USER_ON_SERVER="bzoltan"
+SERVER="people.canonical.com"
+VPN_CONNECTION="uk-bzoltan"
 
 DOWLOAD_JSON="com.ubuntu.sdkimage:released:download.json"
 DATE_STAMP=`date +"%Y_%m_%d"`
 IMAGE_PATH="public_html/sdk-test-images-${DATE_STAMP}"
 
-ssh $USER_ON_SERVER@$SERVER "mkdir -p ${IMAGE_PATH}/releases/xenial ${IMAGE_PATH}/releases/vivid ${IMAGE_PATH}/streams/v1/"
+nmcli con up id {$VPN_CONNECTION}
 
+ssh $USER_ON_SERVER@$SERVER "mkdir -p ${IMAGE_PATH}/releases/xenial ${IMAGE_PATH}/releases/vivid ${IMAGE_PATH}/streams/v1/"
 scp ubuntu-sdk-15.04-*.xz $USER_ON_SERVER@$SERVER:${IMAGE_PATH}/releases/vivid
 scp ubuntu-sdk-16.04-*.xz $USER_ON_SERVER@$SERVER:${IMAGE_PATH}/releases/xenial
-
 if [ -f ${DOWLOAD_JSON} ]; then
     mv ${DOWLOAD_JSON} download.json
 fi
