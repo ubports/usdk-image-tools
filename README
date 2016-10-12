@@ -48,3 +48,18 @@ the container.
 
 The tool requires the ubuntu-sdk-tools and bzr packages in the system.
 
+3. publish_image_bundle
+
+Tool to publish the SDK images to the server for testing purposes.
+
+The script must be customized for the server the images are piublished to. The
+publishing is done via SSH, so the username and the server need to be modified 
+in the script. Also if the server is accesable on VPN network the right profile
+need to be given. 
+
+USER_ON_SERVER="bzoltan"
+SERVER="people.canonical.com"
+VPN_CONNECTION="uk-bzoltan"
+
+Usage:
+  $ publish_image_bundle
