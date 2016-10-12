@@ -8,7 +8,12 @@ DOWLOAD_JSON="com.ubuntu.sdkimage:released:download.json"
 DATE_STAMP=`date +"%Y_%m_%d"`
 IMAGE_PATH="public_html/sdk-test-images-${DATE_STAMP}"
 
-nmcli con up id {$VPN_CONNECTION}
+if nmcli connection show --active|grep -q ${VPN_CONNECTION}; then
+   STARTED_WITH_VPN=true
+else
+   STARTED_WITH_VPN=false
+   nmcli con up id ${VPN_CONNECTION}
+fi
 
 ssh $USER_ON_SERVER@$SERVER "mkdir -p ${IMAGE_PATH}/releases/xenial ${IMAGE_PATH}/releases/vivid ${IMAGE_PATH}/streams/v1/"
 scp ubuntu-sdk-15.04-*.xz $USER_ON_SERVER@$SERVER:${IMAGE_PATH}/releases/vivid
@@ -18,3 +23,8 @@ if [ -f ${DOWLOAD_JSON} ]; then
 fi
 scp *json $USER_ON_SERVER@$SERVER:${IMAGE_PATH}/streams/v1/
 ssh $USER_ON_SERVER@$SERVER "mv ${IMAGE_PATH}/streams/v1/download.json ${IMAGE_PATH}/streams/v1/${DOWLOAD_JSON}"
+
+if [ ${STARTED_WITH_VPN} == false ]; then
+   nmcli con down id ${VPN_CONNECTION}
+fi
+
