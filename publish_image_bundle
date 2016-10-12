@@ -1,14 +1,19 @@
 #!/bin/bash
 
-./usdk-target-build -a amd64 -b amd64 -f ubuntu-sdk-15.04 && \
-./usdk-target-build -a armhf -b amd64 -f ubuntu-sdk-15.04 && \
-./usdk-target-build -a i386 -b i386 -f ubuntu-sdk-15.04 && \
-./usdk-target-build -a armhf -b i386 -f ubuntu-sdk-15.04 && \
-./usdk-target-build -a armhf -b armhf -f ubuntu-sdk-15.04 && \
-./usdk-target-build -a amd64 -b amd64 -f ubuntu-sdk-16.04 && \
-./usdk-target-build -a armhf -b amd64 -f ubuntu-sdk-16.04 && \
-./usdk-target-build-a arm64 -b amd64 -f ubuntu-sdk-16.04 && \
-./usdk-target-build -a i386 -b i386 -f ubuntu-sdk-16.04 && \
-./usdk-target-build -a armhf -b i386 -f ubuntu-sdk-16.04 && \
-./usdk-target-build-a arm64 -b i386 -f ubuntu-sdk-16.04 && \
-./usdk-target-build -a armhf -b armhf -f ubuntu-sdk-16.04 
+USER_ON_SERVER=bzoltan
+SERVER=people.canonical.com
+
+DOWLOAD_JSON="com.ubuntu.sdkimage:released:download.json"
+DATE_STAMP=`date +"%Y_%m_%d"`
+IMAGE_PATH="public_html/sdk-test-images-${DATE_STAMP}"
+
+ssh $USER_ON_SERVER@$SERVER "mkdir -p ${IMAGE_PATH}/releases/xenial ${IMAGE_PATH}/releases/vivid ${IMAGE_PATH}/streams/v1/"
+
+scp ubuntu-sdk-15.04-*.xz $USER_ON_SERVER@$SERVER:${IMAGE_PATH}/releases/vivid
+scp ubuntu-sdk-16.04-*.xz $USER_ON_SERVER@$SERVER:${IMAGE_PATH}/releases/xenial
+
+if [ -f ${DOWLOAD_JSON} ]; then
+    mv ${DOWLOAD_JSON} download.json
+fi
+scp *json $USER_ON_SERVER@$SERVER:${IMAGE_PATH}/streams/v1/
+ssh $USER_ON_SERVER@$SERVER "mv ${IMAGE_PATH}/streams/v1/download.json ${IMAGE_PATH}/streams/v1/${DOWLOAD_JSON}"
