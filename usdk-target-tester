@@ -249,7 +249,7 @@ def test_container_status(container_name):
 #
 # Test if the container can be destroyed
 #
-def test_container_destroy(container_name):
+def test_container_destroy(container_name, fingerprint):
     usdk_target_process = subprocess.Popen(["/usr/bin/usdk-target",
                                             "destroy",
                                             "%s" % container_name],
@@ -259,7 +259,13 @@ def test_container_destroy(container_name):
     if stderr_value:
         return False, stderr_value.decode("utf-8")
     else:
-        # lxc image delete <fingerprint>
+        lxc_process = subprocess.Popen(["/usr/bin/lxc",
+                                        "image",
+                                        "delete",
+                                        "%s" % fingerprint])
+        if lxc_process.returncode:
+            log_test(False,
+                     "Could not delete the image file for %d" % fingerprint)
         return True, stdout_value.decode("utf-8")
 
 
@@ -370,7 +376,9 @@ for product in index_data["index"
         test_download_image_result, stdout_or_error\
             = test_download_image(image_fingerprint, product)
         if test_download_image_result is False:
-            log_test(False, "Could not create container for %s " % product)
+            log_test(False,
+                     "Could not create container for %s - %s"
+                     % (product, image_fingerprint))
             continue
         else:
             log_test(True, "The container is created for %s" % image_alias)
@@ -399,7 +407,7 @@ for product in index_data["index"
     test_build_projects_in_container(test_container_name, target_arch)
 
     test_container_destroy_result, test_container_destroy_logs\
-        = test_container_destroy(test_container_name)
+        = test_container_destroy(test_container_name, image_fingerprint)
     if test_container_destroy_result is False:
         log_test(False,
                  "The %s container could not be destroyed"
