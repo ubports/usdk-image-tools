@@ -259,6 +259,7 @@ def test_container_destroy(container_name):
     if stderr_value:
         return False, stderr_value.decode("utf-8")
     else:
+        # lxc image delete <fingerprint>
         return True, stdout_value.decode("utf-8")
 
 
