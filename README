@@ -3,11 +3,11 @@
 The core tool to create Ubuntu SDK images.
 
 Usage:
-    $ sudo usdk-target-build -a [ target arch ]
-                             -b [ base arch ]
-                             -f [ framework ]
+  $ sudo usdk-target-build -a [ target arch ]
+                           -b [ base arch ]
+                           -f [ framework ]
 Example:
-   $ sudo usdk-target-build -a armhf -b amd64 -f ubuntu-sdk-15.04
+  $ sudo usdk-target-build -a armhf -b amd64 -f ubuntu-sdk-15.04
 
 
 2. create_image_bundle
@@ -17,7 +17,7 @@ supported Ubuntu SDK targets. It needs about 4GB disk space and it might
 take several hours to complete.
 
 Usage:
-  $ sudo create_image_bundle
+  $ sudo create_image_bundle 
 
 3. usdk-target-tester
 
@@ -27,13 +27,17 @@ First the images need be created with the usdk-target-build or with the
 create_image_bundle. The images and the json files need to be published to
 a server.
 
-For example to https://people.canonical.com/~[USERNAME]/test-sdk-images
+For example to https://[IMAGE_SERVER]/images
+
+The [IMAGE_SERVER] must be a valid SSL certified web server.
 
 The index.json file need to be present locally as a reference list of the
 tested images.
 
 Usage:
-    $ sudo usdk-target-tester
+  $ sudo USDK_TEST_REMOTE=https://[IMAGE_SERVER]/images usdk-target-tester [ -b ]
+
+  -b: Branch the test projects to /tmp
 
 The tool will branch the test projects from the launchpad and check if the
 image server and the LXD backend are correct.
