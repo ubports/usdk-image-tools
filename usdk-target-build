@@ -605,6 +605,7 @@ class ClickChroot:
                 mkdir -p /etc/apt/sources.list.d/
                 echo "deb {ubports} xenial main" \
                     > /etc/apt/sources.list.d/ubports.list
+                wget -qO - "{ubports}/keyring.gpg" | apt-key add -
                 # Configure target arch
                 dpkg --add-architecture {target_arch}
                 # Reload package lists
