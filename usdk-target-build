@@ -545,6 +545,7 @@ class ClickChroot:
                 #!/bin/bash
                 set -e
                 # Add ubports repo
+                apt-get -y --force-yes  --no-install-recommends install wget
                 mkdir -p /etc/apt/sources.list.d/
                 echo "deb {ubports} xenial main" \
                     > /etc/apt/sources.list.d/ubports.list
