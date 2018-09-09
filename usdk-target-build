@@ -153,6 +153,28 @@ auto eth0
 iface eth0 inet dhcp
 """
 
+qt_conf = """\
+[Paths]
+Prefix=/usr
+ArchData=/usr/lib/arm-linux-gnueabihf/qt5
+Data=/usr/share/qt5
+Documentation=/usr/share/qt5/doc
+Headers=/usr/include/arm-linux-gnueabihf/qt5
+Libraries=/usr/lib/arm-linux-gnueabihf
+LibraryExecutables=/usr/lib/arm-linux-gnueabihf/qt5/libexec
+Binaries=/usr/lib/x86_64-linux-gnu/qt5/bin
+Plugins=/usr/lib/arm-linux-gnueabihf/qt5/plugins
+Imports=/usr/lib/arm-linux-gnueabihf/qt5/imports
+Qml2Imports=/usr/lib/arm-linux-gnueabihf/qt5/qml
+Translations=/usr/share/qt5/translations
+Configuration=/etc/xdg
+Examples=/usr/lib/arm-linux-gnueabihf/qt5/examples
+HostData=/usr/lib/arm-linux-gnueabihf/qt5
+HostBinaries=/usr/lib/x86_64-linux-gnu/qt5/bin
+HostLibraries=/usr/lib/arm-linux-gnueabihf
+TargetSpec = ubuntu-arm-gnueabihf-g++
+"""
+
 primary_arches = ["amd64", "i386"]
 lxd_arch = {
     "i386": "i686",
@@ -786,6 +808,14 @@ class ClickChroot:
                   upstart_override_tpl_filename),
                   "w") as upstart_override_tpl_file:
                 print(upstart_override_tpl, file=upstart_override_tpl_file)
+        # Default qmake conf
+        qt5_dir = "%s/usr/lib/%s/qt5/%s/bin" % (mount,
+                  self.dpkg_architecture["DEB_BUILD_GNU_TYPE"],
+                  self.dpkg_architecture["DEB_HOST_GNU_TYPE"])
+        if not os.path.exists(qt5_dir):
+            os.makedirs(qt5_dir)
+        with open("%s/qt.conf" % qt5_dir , "w") as f:
+            print(qt_conf, file=f)
         print("Packaging the LXD image.....")
         rootfs_parts = os.listdir(rootfs)
         ret = subprocess.call(["tar",
