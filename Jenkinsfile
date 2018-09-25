@@ -1,5 +1,9 @@
 pipeline {
   agent any
+  triggers {
+    // Trigger once a day on the 1st and 15th of every month
+    cron('H H 1,15 * *')
+  }
   stages {
     stage('Build SDK') {
       steps {
