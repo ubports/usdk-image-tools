@@ -5,9 +5,18 @@ pipeline {
     cron('H H 1,15 * *')
   }
   stages {
-    stage('Build SDK') {
+    stage('Checkout repository') {
       steps {
         checkout scm
+      }
+    }
+    stage('Build amd64 SDK') {
+      steps {
+        sh 'sudo ./usdk-target-build -a amd64 -b amd64 -f ubuntu-sdk-16.04'
+      }
+    }
+    stage('Build armhf SDK') {
+      steps {
         sh 'sudo ./usdk-target-build -a armhf -b amd64 -f ubuntu-sdk-16.04'
       }
     }
