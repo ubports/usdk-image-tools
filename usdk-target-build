@@ -108,7 +108,6 @@ extra_packages = {
 runtime_packages = [
     "openssh-client",
     "xauth",
-    "unity-scope-tool",
     "ssh",
     "gdbserver",
     "pulseaudio",
@@ -117,7 +116,6 @@ runtime_packages = [
     "gstreamer0.10-pulseaudio",
     "gstreamer0.10-plugins-good",
     "qml-module-ubuntu-connectivity",
-    "webapp-container"
 ]
 
 metadata_template = """\
