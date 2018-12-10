@@ -21,6 +21,7 @@ pipeline {
       }
     }
     stage('Publish SDK') {
+      when { branch 'master' }
       steps {
         sh './publish_image_bundle'
       }
