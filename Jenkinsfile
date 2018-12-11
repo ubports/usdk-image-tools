@@ -20,7 +20,13 @@ pipeline {
         sh 'sudo ./usdk-target-build -a armhf -b amd64 -f ubuntu-sdk-16.04'
       }
     }
+    stage('Build arm64 SDK') {
+      steps {
+        sh 'sudo ./usdk-target-build -a arm64 -b amd64 -f ubuntu-sdk-16.04'
+      }
+    }
     stage('Publish SDK') {
+      when { branch 'master' }
       steps {
         sh './publish_image_bundle'
       }
