@@ -2,12 +2,12 @@
 
 set -e
 
-USER_ON_SERVER="mariogrip"
-SERVER="ssh-server1.ubports.com"
+USER_ON_SERVER="sdk-images"
+SERVER="legacy.ubports.com"
 
 DOWLOAD_JSON="com.ubuntu.sdkimage:released:download.json"
 DATE_STAMP=`date +"%Y_%m_%d"`
-IMAGE_PATH="/var/www/sdk-images"
+IMAGE_PATH="public"
 
 ssh $USER_ON_SERVER@$SERVER "mkdir -p ${IMAGE_PATH}/releases/xenial ${IMAGE_PATH}/releases/vivid ${IMAGE_PATH}/streams/v1/"
 if compgen -G "ubuntu-sdk-15.04-*.xz" > /dev/null; then
